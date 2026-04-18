@@ -1,0 +1,8 @@
+.DS_Store
+.gstack/
+assets/muziek.mp3
+assets/muziek.m4a
+assets/muziek.ogg
+assets/muziek.wav
+node_modules/
+*.log
