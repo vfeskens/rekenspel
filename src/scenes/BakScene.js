@@ -160,7 +160,9 @@ class BakScene extends Phaser.Scene {
     this.mes.y = this.plankY - 80;
     this.mes.x = this.plankX;
     this.mes.setAngle(-15);
-    this.tweens.add({
+    appel.chops = 0;
+    appel.crackGrafiek = this.add.graphics().setDepth(7);
+    this.mesZweef = this.tweens.add({
       targets: this.mes,
       y: this.plankY - 68,
       angle: { from: -15, to: -5 },
@@ -171,31 +173,108 @@ class BakScene extends Phaser.Scene {
     });
 
     appel.setInteractive({ useHandCursor: true });
-    appel.once('pointerdown', () => this.snijden(appel));
+    appel.on('pointerdown', () => this.hakken(appel));
   }
 
-  snijden(appel) {
-    appel.disableInteractive();
-    this.tweens.killTweensOf(this.mes);
+  hakken(appel) {
+    if (appel.bezig) return;
+    appel.bezig = true;
+    appel.chops = (appel.chops || 0) + 1;
+
+    if (this.mesZweef) this.mesZweef.stop();
 
     this.tweens.add({
       targets: this.mes,
-      y: this.plankY - 10,
-      angle: 30,
-      duration: 150,
+      y: this.plankY - 16,
+      angle: 25,
+      duration: 110,
       ease: 'Quad.In',
       onComplete: () => {
-        this.cameras.main.shake(120, 0.005);
+        this.cameras.main.shake(140, 0.008);
         if (typeof Geluid !== 'undefined') Geluid.klik();
+
         this.tweens.add({
-          targets: this.mes,
-          y: this.plankY - 80,
-          angle: -5,
-          duration: 200,
+          targets: appel,
+          angle: { from: -6, to: 6 },
+          duration: 80,
+          yoyo: true,
+          repeat: 1,
+          onComplete: () => appel.setAngle(0),
         });
-        this.splitsInWedges(appel);
+
+        this.tekenCrack(appel);
+
+        for (let i = 0; i < 4; i++) {
+          const stof = this.add.circle(
+            appel.x + Phaser.Math.Between(-20, 20),
+            appel.y + Phaser.Math.Between(-10, 10),
+            Phaser.Math.Between(2, 3),
+            0xfff4d0, 0.8
+          ).setDepth(8);
+          this.tweens.add({
+            targets: stof,
+            y: stof.y - 20,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => stof.destroy(),
+          });
+        }
+
+        if (appel.chops >= 3) {
+          appel.disableInteractive();
+          this.tweens.add({
+            targets: this.mes,
+            y: this.plankY - 80,
+            angle: -5,
+            duration: 180,
+            onComplete: () => this.splitsInWedges(appel),
+          });
+        } else {
+          this.tweens.add({
+            targets: this.mes,
+            y: this.plankY - 68,
+            angle: -5,
+            duration: 160,
+            onComplete: () => {
+              appel.bezig = false;
+              this.mesZweef = this.tweens.add({
+                targets: this.mes,
+                y: this.plankY - 68,
+                angle: { from: -15, to: -5 },
+                duration: 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.InOut',
+              });
+            },
+          });
+        }
       },
     });
+  }
+
+  tekenCrack(appel) {
+    const g = appel.crackGrafiek;
+    if (!g) return;
+    g.lineStyle(2, 0x2b1a10);
+    const ax = appel.x;
+    const ay = appel.y;
+    const chop = appel.chops;
+    if (chop === 1) {
+      g.beginPath();
+      g.moveTo(ax - 12, ay - 6);
+      g.lineTo(ax - 4, ay);
+      g.lineTo(ax - 6, ay + 6);
+      g.lineTo(ax + 2, ay + 12);
+      g.strokePath();
+    } else if (chop === 2) {
+      g.beginPath();
+      g.moveTo(ax + 12, ay - 8);
+      g.lineTo(ax + 4, ay - 2);
+      g.lineTo(ax + 8, ay + 4);
+      g.lineTo(ax - 2, ay + 14);
+      g.strokePath();
+    }
   }
 
   splitsInWedges(appel) {
@@ -222,6 +301,14 @@ class BakScene extends Phaser.Scene {
       });
     }
 
+    if (appel.crackGrafiek) {
+      this.tweens.add({
+        targets: appel.crackGrafiek,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => appel.crackGrafiek.destroy(),
+      });
+    }
     this.tweens.add({
       targets: appel,
       alpha: 0,
@@ -263,9 +350,114 @@ class BakScene extends Phaser.Scene {
     if (typeof Geluid !== 'undefined') Geluid.appel();
 
     if (this.geslepen === this.aantalAppels) {
-      this.time.delayedCall(400, () => this.toonBakKnop());
+      this.time.delayedCall(400, () => this.toonSuikerPhase());
     } else {
       this.instructie.setText('Sleep de volgende appel!');
+    }
+  }
+
+  toonSuikerPhase() {
+    this.instructie.setText('Strooi suiker over de taart! (3x tikken)');
+
+    this.suikerpot = this.add.image(this.bodemX, this.bodemY - 120, 'suikerpot')
+      .setInteractive({ useHandCursor: true })
+      .setDepth(15);
+
+    this.suikerTeller = 0;
+    this.suikerMax = 3;
+
+    this.suikerBob = this.tweens.add({
+      targets: this.suikerpot,
+      y: this.bodemY - 128,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
+
+    const pijl = this.add.text(this.bodemX + 60, this.bodemY - 120, '← tik!', {
+      fontFamily: 'Trebuchet MS, Arial, sans-serif',
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: '#ff4422',
+      stroke: '#2b1a10',
+      strokeThickness: 3,
+    }).setOrigin(0, 0.5).setDepth(15);
+    this.tweens.add({
+      targets: pijl,
+      x: this.bodemX + 70,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    });
+    this.suikerpot.pijl = pijl;
+
+    this.suikerpot.on('pointerdown', () => this.sprenkelSuiker());
+  }
+
+  sprenkelSuiker() {
+    this.suikerTeller++;
+
+    if (this.suikerpot.pijl) {
+      this.suikerpot.pijl.destroy();
+      this.suikerpot.pijl = null;
+    }
+
+    this.tweens.add({
+      targets: this.suikerpot,
+      angle: { from: -25, to: 25 },
+      duration: 120,
+      yoyo: true,
+      repeat: 1,
+      onComplete: () => this.suikerpot.setAngle(0),
+    });
+
+    const aantalDeeltjes = 14;
+    for (let i = 0; i < aantalDeeltjes; i++) {
+      const startX = this.suikerpot.x + Phaser.Math.Between(-28, 28);
+      const startY = this.suikerpot.y + 40;
+      const deeltje = this.add.circle(
+        startX,
+        startY,
+        Phaser.Math.FloatBetween(1.5, 2.8),
+        0xffffff
+      ).setDepth(16).setAlpha(0.95);
+
+      const doelX = startX + Phaser.Math.Between(-30, 30);
+      const doelY = this.bodemY + Phaser.Math.Between(-15, 5);
+
+      this.tweens.add({
+        targets: deeltje,
+        x: doelX,
+        y: doelY,
+        duration: Phaser.Math.Between(500, 800),
+        ease: 'Quad.In',
+        delay: i * 15,
+        onComplete: () => {
+          this.tweens.add({
+            targets: deeltje,
+            alpha: 0,
+            duration: 400,
+            delay: 200,
+            onComplete: () => deeltje.destroy(),
+          });
+        },
+      });
+    }
+
+    if (typeof Geluid !== 'undefined') Geluid.klik();
+
+    if (this.suikerTeller >= this.suikerMax) {
+      this.suikerpot.disableInteractive();
+      if (this.suikerBob) this.suikerBob.stop();
+      this.tweens.add({
+        targets: this.suikerpot,
+        y: this.suikerpot.y - 40,
+        alpha: 0,
+        duration: 500,
+        onComplete: () => this.suikerpot.destroy(),
+      });
+      this.time.delayedCall(600, () => this.toonBakKnop());
     }
   }
 
@@ -359,7 +551,7 @@ class BakScene extends Phaser.Scene {
 
     this.time.addEvent({
       delay: 150,
-      repeat: 14,
+      repeat: 20,
       callback: () => {
         const stoom = this.add.image(
           this.bodemX + Phaser.Math.Between(-50, 50),
@@ -380,12 +572,44 @@ class BakScene extends Phaser.Scene {
     if (typeof Geluid !== 'undefined') {
       this.time.addEvent({
         delay: 400,
-        repeat: 5,
+        repeat: 7,
         callback: () => Geluid.klik(),
       });
     }
 
-    this.time.delayedCall(2500, () => {
+    const toonCountdown = (n, delay) => {
+      this.time.delayedCall(delay, () => {
+        const t = this.add.text(b / 2, 260, String(n), {
+          fontFamily: 'Trebuchet MS, Arial, sans-serif',
+          fontSize: '120px',
+          fontStyle: 'bold',
+          color: '#ffee66',
+          stroke: '#2b1a10',
+          strokeThickness: 10,
+        }).setOrigin(0.5).setDepth(30).setAlpha(0);
+        this.tweens.add({
+          targets: t,
+          alpha: { from: 0, to: 1 },
+          scale: { from: 0.3, to: 1.4 },
+          duration: 300,
+          ease: 'Back.Out',
+        });
+        this.tweens.add({
+          targets: t,
+          alpha: 0,
+          scale: 2.2,
+          duration: 400,
+          delay: 600,
+          onComplete: () => t.destroy(),
+        });
+        if (typeof Geluid !== 'undefined') Geluid.klik();
+      });
+    };
+    toonCountdown(3, 300);
+    toonCountdown(2, 1300);
+    toonCountdown(1, 2300);
+
+    this.time.delayedCall(3300, () => {
       this.bodem.setTexture('taart-klaar');
       this.tweens.add({
         targets: [this.bodem],

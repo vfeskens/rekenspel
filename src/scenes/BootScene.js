@@ -31,6 +31,7 @@ class BootScene extends Phaser.Scene {
     this.tekenSnijplank(g); g.generateTexture('snijplank', 200, 110);
     this.tekenWedge(g); g.generateTexture('wedge', 28, 32);
     this.tekenMes(g); g.generateTexture('mes', 48, 96);
+    this.tekenSuikerpot(g); g.generateTexture('suikerpot', 80, 100);
 
     g.destroy();
   }
@@ -612,6 +613,44 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0xffd900);
     g.fillCircle(14, 68, 1.5);
     g.fillCircle(34, 68, 1.5);
+  }
+
+  tekenSuikerpot(g) {
+    g.clear();
+    g.fillStyle(0xf8f4e8);
+    g.fillRoundedRect(10, 30, 60, 60, 8);
+    g.fillStyle(0xe8e0d0);
+    g.fillRoundedRect(10, 74, 60, 16, { tl: 0, tr: 0, bl: 8, br: 8 });
+    g.lineStyle(2, 0x2b1a10);
+    g.strokeRoundedRect(10, 30, 60, 60, 8);
+
+    g.fillStyle(0xa8806a);
+    g.fillRoundedRect(14, 8, 52, 24, 6);
+    g.lineStyle(2, 0x2b1a10);
+    g.strokeRoundedRect(14, 8, 52, 24, 6);
+
+    g.fillStyle(0xffffff);
+    const gaten = [[24, 16], [32, 14], [40, 16], [48, 14], [56, 16], [28, 22], [44, 22], [52, 22], [36, 22]];
+    gaten.forEach(([x, y]) => g.fillCircle(x, y, 1.8));
+
+    g.fillStyle(0xffffff);
+    g.fillRect(16, 44, 48, 42);
+    g.fillStyle(0xf0ecd8);
+    for (let i = 0; i < 20; i++) {
+      g.fillCircle(
+        16 + Math.random() * 48,
+        44 + Math.random() * 42,
+        1 + Math.random()
+      );
+    }
+
+    g.fillStyle(0x2b1a10);
+    g.fillCircle(30, 56, 2);
+    g.fillCircle(50, 56, 2);
+    g.lineStyle(2, 0x2b1a10);
+    g.beginPath();
+    g.arc(40, 66, 6, 0.2, Math.PI - 0.2);
+    g.strokePath();
   }
 
   tekenStoom(g) {
