@@ -27,4 +27,21 @@ if (typeof Geluid !== 'undefined') {
   fetch('assets/muziek.mp3', { method: 'HEAD' })
     .then((r) => { if (r.ok) Geluid.laadEigenMuziek('assets/muziek.mp3'); })
     .catch(() => {});
+
+  const ontgrendelAudio = () => {
+    Geluid.init();
+    if (Geluid.ctx && Geluid.ctx.state === 'suspended') {
+      Geluid.ctx.resume().catch(() => {});
+    }
+    if (Geluid.muziekActief) Geluid.muziekStart();
+  };
+  document.addEventListener('touchstart', ontgrendelAudio, { once: true, passive: true });
+  document.addEventListener('pointerdown', ontgrendelAudio, { once: true });
+  document.addEventListener('click', ontgrendelAudio, { once: true });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Geluid.ctx && Geluid.ctx.state === 'suspended') {
+      Geluid.ctx.resume().catch(() => {});
+    }
+  });
 }

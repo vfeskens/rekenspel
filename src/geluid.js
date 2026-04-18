@@ -9,7 +9,9 @@ const Geluid = {
 
   init() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
       return;
     }
     try {
@@ -18,6 +20,19 @@ const Geluid = {
     } catch (e) {
       return;
     }
+
+    try {
+      const buf = this.ctx.createBuffer(1, 1, 22050);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+    } catch (e) {}
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+
     try {
       const opgeslagen = localStorage.getItem('roeltjeGeluid');
       if (opgeslagen) {
