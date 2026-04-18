@@ -14,15 +14,20 @@ const Geluid = {
       }
       return;
     }
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new Ctx();
-    } catch (e) {
-      return;
+
+    if (window.spel && window.spel.sound && window.spel.sound.context) {
+      this.ctx = window.spel.sound.context;
+    } else {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new Ctx();
+      } catch (e) {
+        return;
+      }
     }
 
     try {
-      const buf = this.ctx.createBuffer(1, 1, 22050);
+      const buf = this.ctx.createBuffer(1, 256, 22050);
       const src = this.ctx.createBufferSource();
       src.buffer = buf;
       src.connect(this.ctx.destination);
@@ -31,6 +36,10 @@ const Geluid = {
 
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
+    }
+
+    if (window.spel && window.spel.sound && typeof window.spel.sound.unlock === 'function') {
+      try { window.spel.sound.unlock(); } catch (e) {}
     }
 
     try {

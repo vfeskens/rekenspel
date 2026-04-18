@@ -29,15 +29,20 @@ if (typeof Geluid !== 'undefined') {
     .catch(() => {});
 
   const ontgrendelAudio = () => {
-    Geluid.init();
+    if (!Geluid.ctx) Geluid.init();
     if (Geluid.ctx && Geluid.ctx.state === 'suspended') {
       Geluid.ctx.resume().catch(() => {});
     }
-    if (Geluid.muziekActief) Geluid.muziekStart();
+    if (window.spel && window.spel.sound && typeof window.spel.sound.unlock === 'function') {
+      try { window.spel.sound.unlock(); } catch (e) {}
+    }
+    if (Geluid.muziekActief && Geluid.ctx && Geluid.ctx.state === 'running' && !Geluid._timer) {
+      Geluid.muziekStart();
+    }
   };
-  document.addEventListener('touchstart', ontgrendelAudio, { once: true, passive: true });
-  document.addEventListener('pointerdown', ontgrendelAudio, { once: true });
-  document.addEventListener('click', ontgrendelAudio, { once: true });
+  document.addEventListener('touchstart', ontgrendelAudio, { passive: true });
+  document.addEventListener('pointerdown', ontgrendelAudio);
+  document.addEventListener('click', ontgrendelAudio);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && Geluid.ctx && Geluid.ctx.state === 'suspended') {
