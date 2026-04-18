@@ -29,7 +29,7 @@ class BakScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5);
 
-    this.instructie = this.add.text(b / 2, 76, 'Sleep een appel naar de snijplank!', {
+    this.instructie = this.add.text(b / 2, 76, 'Tik op een appel (of sleep \'m naar de snijplank)!', {
       fontFamily: 'Trebuchet MS, Arial, sans-serif',
       fontSize: '20px',
       color: '#2b1a10',
@@ -75,9 +75,27 @@ class BakScene extends Phaser.Scene {
       appel.startX = startX;
       appel.startY = startY;
       appel.status = 'heel';
+      appel.wasGedragged = false;
       appel.setInteractive({ draggable: true, useHandCursor: true });
-      this.input.setDraggable(appel);
       this.appels.push(appel);
+
+      appel.on('pointerdown', (pointer) => {
+        appel._downX = pointer.x;
+        appel._downY = pointer.y;
+        appel._downTime = pointer.downTime;
+        appel.wasGedragged = false;
+      });
+
+      appel.on('pointerup', (pointer) => {
+        if (appel.status !== 'heel') return;
+        if (this.huidigeAppelOpPlank) return;
+        if (appel.wasGedragged) return;
+        const dx = pointer.x - (appel._downX || pointer.x);
+        const dy = pointer.y - (appel._downY || pointer.y);
+        if (dx * dx + dy * dy < 200) {
+          this.legOpPlank(appel);
+        }
+      });
 
       const dans = this.tweens.add({
         targets: appel,
@@ -100,6 +118,7 @@ class BakScene extends Phaser.Scene {
 
     this.input.on('dragstart', (pointer, obj) => {
       if (obj.status !== 'heel') return;
+      obj.wasGedragged = true;
       if (obj.dans) obj.dans.stop();
       obj.setScale(1.7);
     });

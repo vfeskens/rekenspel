@@ -222,9 +222,24 @@ const Geluid = {
   muziekStart() {
     if (!this.muziekActief) return;
     if (this._htmlAudioKlaar && this._htmlAudio) {
-      this._htmlAudio.play().catch(() => {});
+      if (this._htmlAudio.paused) {
+        const p = this._htmlAudio.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            this._stopProcedureel();
+          }).catch(() => {
+            this._startProcedureel();
+          });
+        } else {
+          this._stopProcedureel();
+        }
+      }
       return;
     }
+    this._startProcedureel();
+  },
+
+  _startProcedureel() {
     if (!this.ctx || this._timer) return;
     const nu = this.ctx.currentTime;
     this._melTijd = nu + 0.1;
@@ -235,14 +250,18 @@ const Geluid = {
     this._timer = setInterval(() => this._plan(), 400);
   },
 
-  muziekStop() {
-    if (this._htmlAudio && !this._htmlAudio.paused) {
-      this._htmlAudio.pause();
-    }
+  _stopProcedureel() {
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = null;
     }
+  },
+
+  muziekStop() {
+    if (this._htmlAudio && !this._htmlAudio.paused) {
+      this._htmlAudio.pause();
+    }
+    this._stopProcedureel();
   },
 
   laadEigenMuziek(pad, volume = 0.35) {
@@ -253,10 +272,6 @@ const Geluid = {
     audio.addEventListener('canplaythrough', () => {
       this._htmlAudio = audio;
       this._htmlAudioKlaar = true;
-      if (this.muziekActief && this.ctx) {
-        this.muziekStop();
-        audio.play().catch(() => {});
-      }
     }, { once: true });
     audio.addEventListener('error', () => {
       this._htmlAudio = null;

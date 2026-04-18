@@ -36,7 +36,7 @@ if (typeof Geluid !== 'undefined') {
     if (window.spel && window.spel.sound && typeof window.spel.sound.unlock === 'function') {
       try { window.spel.sound.unlock(); } catch (e) {}
     }
-    if (Geluid.muziekActief && Geluid.ctx && Geluid.ctx.state === 'running' && !Geluid._timer) {
+    if (Geluid.muziekActief) {
       Geluid.muziekStart();
     }
   };
