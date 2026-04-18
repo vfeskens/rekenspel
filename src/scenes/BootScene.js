@@ -28,6 +28,9 @@ class BootScene extends Phaser.Scene {
     this.tekenTaartKlaar(g); g.generateTexture('taart-klaar', 160, 80);
     this.tekenStoom(g); g.generateTexture('stoom', 48, 48);
     this.tekenOven(g); g.generateTexture('oven', 260, 200);
+    this.tekenSnijplank(g); g.generateTexture('snijplank', 200, 110);
+    this.tekenWedge(g); g.generateTexture('wedge', 28, 32);
+    this.tekenMes(g); g.generateTexture('mes', 48, 96);
 
     g.destroy();
   }
@@ -559,6 +562,56 @@ class BootScene extends Phaser.Scene {
     }
     g.lineStyle(2, 0x2b1a10);
     g.strokeEllipse(80, 40, 150, 70);
+  }
+
+  tekenSnijplank(g) {
+    g.clear();
+    g.fillStyle(0xc89060);
+    g.fillRoundedRect(0, 0, 200, 110, 10);
+    g.fillStyle(0xa77548);
+    g.fillRoundedRect(0, 90, 200, 20, { tl: 0, tr: 0, bl: 10, br: 10 });
+    g.lineStyle(1, 0x8a5a2a, 0.6);
+    for (let y = 12; y < 100; y += 14) {
+      g.lineBetween(8, y, 192, y);
+    }
+    g.lineStyle(2, 0x2b1a10);
+    g.strokeRoundedRect(0, 0, 200, 110, 10);
+  }
+
+  tekenWedge(g) {
+    const R = 0xdd2020;
+    const L = 0xff5040;
+    const F = 0xfff4d0;
+    const K = 0x2b1a10;
+    g.clear();
+    g.fillStyle(F);
+    g.fillTriangle(2, 30, 14, 4, 26, 30);
+    g.fillStyle(R);
+    g.fillRect(0, 28, 28, 4);
+    g.fillStyle(L);
+    g.fillTriangle(6, 28, 14, 8, 22, 28);
+    g.lineStyle(1.5, K);
+    g.strokeTriangle(2, 30, 14, 4, 26, 30);
+    g.fillStyle(0x3a8a2a);
+    g.fillCircle(14, 5, 2);
+  }
+
+  tekenMes(g) {
+    g.clear();
+    g.fillStyle(0xd8d8e0);
+    g.fillTriangle(8, 0, 40, 0, 24, 60);
+    g.fillStyle(0xa8a8b0);
+    g.fillTriangle(8, 0, 24, 60, 8, 6);
+    g.fillStyle(0x6a3a18);
+    g.fillRoundedRect(10, 60, 28, 32, 4);
+    g.fillStyle(0x4a2a10);
+    g.fillRect(10, 80, 28, 6);
+    g.lineStyle(1.5, 0x2b1a10);
+    g.strokeTriangle(8, 0, 40, 0, 24, 60);
+    g.strokeRoundedRect(10, 60, 28, 32, 4);
+    g.fillStyle(0xffd900);
+    g.fillCircle(14, 68, 1.5);
+    g.fillCircle(34, 68, 1.5);
   }
 
   tekenStoom(g) {

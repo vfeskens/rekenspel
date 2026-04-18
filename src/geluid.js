@@ -159,32 +159,35 @@ const Geluid = {
   },
 
   _melodie: [
-    [523.25, 0.35], [523.25, 0.35], [783.99, 0.35], [783.99, 0.35],
-    [880.00, 0.35], [880.00, 0.35], [783.99, 0.70],
+    [523.25, 0.22], [659.25, 0.22], [783.99, 0.22], [659.25, 0.22],
+    [523.25, 0.22], [659.25, 0.22], [783.99, 0.22], [1046.50, 0.22],
 
-    [698.46, 0.35], [698.46, 0.35], [659.25, 0.35], [659.25, 0.35],
-    [587.33, 0.35], [587.33, 0.35], [523.25, 0.70],
+    [880.00, 0.22], [783.99, 0.22], [659.25, 0.22], [523.25, 0.22],
+    [587.33, 0.22], [659.25, 0.22], [783.99, 0.44],
 
-    [783.99, 0.35], [783.99, 0.35], [698.46, 0.35], [698.46, 0.35],
-    [659.25, 0.35], [659.25, 0.35], [587.33, 0.70],
+    [523.25, 0.22], [587.33, 0.22], [659.25, 0.22], [698.46, 0.22],
+    [783.99, 0.22], [880.00, 0.22], [1046.50, 0.22], [880.00, 0.22],
 
-    [783.99, 0.35], [783.99, 0.35], [698.46, 0.35], [698.46, 0.35],
-    [659.25, 0.35], [659.25, 0.35], [587.33, 0.70],
+    [783.99, 0.22], [698.46, 0.22], [659.25, 0.22], [587.33, 0.22],
+    [659.25, 0.22], [587.33, 0.22], [523.25, 0.44],
 
-    [523.25, 0.35], [523.25, 0.35], [783.99, 0.35], [783.99, 0.35],
-    [880.00, 0.35], [880.00, 0.35], [783.99, 0.70],
+    [659.25, 0.22], [659.25, 0.22], [783.99, 0.22], [783.99, 0.22],
+    [880.00, 0.22], [880.00, 0.22], [1046.50, 0.44],
 
-    [698.46, 0.35], [698.46, 0.35], [659.25, 0.35], [659.25, 0.35],
-    [587.33, 0.35], [587.33, 0.35], [523.25, 1.40],
+    [880.00, 0.22], [783.99, 0.22], [880.00, 0.22], [659.25, 0.22],
+    [523.25, 0.22], [659.25, 0.22], [783.99, 0.22], [523.25, 0.22],
+
+    [523.25, 0.66],
   ],
 
   _bas: [
-    [130.81, 0.70], [196.00, 0.70], [130.81, 0.70], [196.00, 0.70],
-    [174.61, 0.70], [130.81, 0.70], [196.00, 0.70], [130.81, 0.70],
-    [196.00, 0.70], [146.83, 0.70], [196.00, 0.70], [130.81, 0.70],
-    [196.00, 0.70], [146.83, 0.70], [196.00, 0.70], [130.81, 0.70],
-    [130.81, 0.70], [196.00, 0.70], [130.81, 0.70], [196.00, 0.70],
-    [174.61, 0.70], [130.81, 0.70], [196.00, 0.70], [130.81, 1.40],
+    [130.81, 0.44], [196.00, 0.44], [130.81, 0.44], [196.00, 0.44],
+    [174.61, 0.44], [261.63, 0.44], [174.61, 0.44], [130.81, 0.44],
+    [130.81, 0.44], [196.00, 0.44], [130.81, 0.44], [196.00, 0.44],
+    [196.00, 0.44], [146.83, 0.44], [196.00, 0.44], [130.81, 0.44],
+    [174.61, 0.44], [130.81, 0.44], [174.61, 0.44], [130.81, 0.44],
+    [196.00, 0.44], [261.63, 0.44], [196.00, 0.44], [130.81, 0.44],
+    [130.81, 0.66],
   ],
 
   _melIdx: 0,
@@ -245,17 +248,66 @@ const Geluid = {
 
     while (this._melTijd < nu + vooruit) {
       const [freq, dur] = this._melodie[this._melIdx];
-      this._klok(freq, this._melTijd, dur, 0.10);
+      this._toet(freq, this._melTijd, dur, 0.08);
       this._melTijd += dur;
       this._melIdx = (this._melIdx + 1) % this._melodie.length;
     }
 
     while (this._basTijd < nu + vooruit) {
       const [freq, dur] = this._bas[this._basIdx];
-      this._pad(freq, this._basTijd, dur, 0.05);
+      this._pad(freq, this._basTijd, dur, 0.055);
+      if (this._basIdx % 2 === 0) {
+        this._kick(this._basTijd, 0.09);
+      }
       this._basTijd += dur;
       this._basIdx = (this._basIdx + 1) % this._bas.length;
     }
+  },
+
+  _toet(freq, start, dur, volume) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, start);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    const attack = 0.005;
+    const hold = Math.min(dur * 0.6, 0.2);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(volume, start + attack);
+    gain.gain.linearRampToValueAtTime(volume * 0.7, start + hold);
+    gain.gain.exponentialRampToValueAtTime(0.0008, start + dur * 0.95);
+    osc.start(start);
+    osc.stop(start + dur);
+
+    const osc2 = this.ctx.createOscillator();
+    const gain2 = this.ctx.createGain();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(freq * 2, start);
+    osc2.connect(gain2);
+    gain2.connect(this.ctx.destination);
+    gain2.gain.setValueAtTime(0, start);
+    gain2.gain.linearRampToValueAtTime(volume * 0.15, start + attack);
+    gain2.gain.exponentialRampToValueAtTime(0.0005, start + dur * 0.6);
+    osc2.start(start);
+    osc2.stop(start + dur);
+  },
+
+  _kick(start, volume) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, start);
+    osc.frequency.exponentialRampToValueAtTime(40, start + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(volume, start + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+    osc.start(start);
+    osc.stop(start + 0.2);
   },
 
   _klok(freq, start, dur, volume) {

@@ -6,8 +6,10 @@ class BakScene extends Phaser.Scene {
   init(data) {
     this.aantalAppels = (data && data.aantalAppels) || 0;
     this.modus = (data && data.modus) || 'kleuter';
-    this.geplaatst = [];
+    this.wedges = [];
+    this.geslepen = 0;
     this.bakklaar = false;
+    this.huidigeAppelOpPlank = null;
   }
 
   create() {
@@ -18,32 +20,45 @@ class BakScene extends Phaser.Scene {
     this.add.rectangle(0, h - 160, b, 160, 0x8a5a2a).setOrigin(0, 0);
     this.add.rectangle(0, h - 160, b, 6, 0x6a3a18).setOrigin(0, 0);
 
-    for (let i = 0; i < 10; i++) {
-      const x = 20 + i * 100;
-      this.add.line(0, 0, x, h - 154, x + 30, h - 10, 0x6a3a18, 0.3)
-        .setOrigin(0, 0).setLineWidth(1);
-    }
-
-    this.add.text(b / 2, 40, 'Roeltje bakt een appeltaart!', {
+    this.add.text(b / 2, 36, 'Roeltje bakt een appeltaart!', {
       fontFamily: 'Trebuchet MS, Arial, sans-serif',
-      fontSize: '34px',
+      fontSize: '32px',
       fontStyle: 'bold',
       color: '#ffee66',
       stroke: '#2b1a10',
       strokeThickness: 6,
     }).setOrigin(0.5);
 
-    this.instructie = this.add.text(b / 2, 82, 'Sleep de appels op de taartbodem!', {
+    this.instructie = this.add.text(b / 2, 76, 'Sleep een appel naar de snijplank!', {
       fontFamily: 'Trebuchet MS, Arial, sans-serif',
       fontSize: '20px',
       color: '#2b1a10',
     }).setOrigin(0.5);
 
-    this.bodem = this.add.image(b / 2, h - 175, 'taartbodem').setScale(1.3);
-    this.bodemRadius = 92;
-    this.bodem.setDepth(2);
+    this.snijplank = this.add.image(b / 2 - 180, h - 250, 'snijplank').setDepth(2);
+    this.plankX = this.snijplank.x;
+    this.plankY = this.snijplank.y;
 
-    this.tekenKok(60, h - 65);
+    this.mes = this.add.image(this.plankX + 50, this.plankY - 70, 'mes').setScale(0.7).setDepth(4);
+    this.mes.setVisible(false);
+
+    this.bodem = this.add.image(b / 2 + 180, h - 250, 'taartbodem').setScale(1.3).setDepth(2);
+    this.bodemX = this.bodem.x;
+    this.bodemY = this.bodem.y;
+    this.bodemRadius = 92;
+
+    this.add.text(this.plankX, this.plankY + 75, 'snijplank', {
+      fontFamily: 'Trebuchet MS, Arial, sans-serif',
+      fontSize: '14px',
+      color: '#6a3a18',
+    }).setOrigin(0.5);
+    this.add.text(this.bodemX, this.bodemY + 60, 'taartbodem', {
+      fontFamily: 'Trebuchet MS, Arial, sans-serif',
+      fontSize: '14px',
+      color: '#6a3a18',
+    }).setOrigin(0.5);
+
+    this.tekenKok(60, h - 70);
 
     if (this.aantalAppels === 0) {
       this.time.delayedCall(200, () => {
@@ -53,19 +68,18 @@ class BakScene extends Phaser.Scene {
     }
 
     this.appels = [];
-    const perRij = Math.min(this.aantalAppels, 8);
     for (let i = 0; i < this.aantalAppels; i++) {
-      const startX = b / 2 - (perRij - 1) * 50 + (i % perRij) * 100;
-      const startY = 150 + Math.floor(i / perRij) * 80;
+      const startX = 180 + (i % 6) * 100;
+      const startY = 140 + Math.floor(i / 6) * 70;
       const appel = this.add.image(startX, startY, 'appel').setScale(1.5).setDepth(5);
       appel.startX = startX;
       appel.startY = startY;
-      appel.geplaatst = false;
+      appel.status = 'heel';
       appel.setInteractive({ draggable: true, useHandCursor: true });
       this.input.setDraggable(appel);
       this.appels.push(appel);
 
-      this.tweens.add({
+      const dans = this.tweens.add({
         targets: appel,
         y: startY - 6,
         duration: 900 + i * 50,
@@ -73,80 +87,191 @@ class BakScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.InOut',
       });
+      appel.dans = dans;
     }
 
     this.input.on('drag', (pointer, obj, dragX, dragY) => {
-      if (obj.geplaatst) return;
+      if (obj.status !== 'heel') return;
+      if (this.huidigeAppelOpPlank && this.huidigeAppelOpPlank !== obj) return;
       obj.x = dragX;
       obj.y = dragY;
       obj.setDepth(10);
     });
 
     this.input.on('dragstart', (pointer, obj) => {
-      if (obj.geplaatst) return;
-      this.tweens.killTweensOf(obj);
+      if (obj.status !== 'heel') return;
+      if (obj.dans) obj.dans.stop();
       obj.setScale(1.7);
     });
 
     this.input.on('dragend', (pointer, obj) => {
-      if (obj.geplaatst) return;
+      if (obj.status !== 'heel') return;
       obj.setScale(1.5);
-      const dx = obj.x - this.bodem.x;
-      const dy = obj.y - this.bodem.y;
-      const opBodem = (dx * dx) / (this.bodemRadius * this.bodemRadius) + (dy * dy) / ((this.bodemRadius * 0.5) * (this.bodemRadius * 0.5)) <= 1;
 
-      if (opBodem) {
-        obj.geplaatst = true;
-        obj.disableInteractive();
-        obj.setDepth(3);
+      const dx = obj.x - this.plankX;
+      const dy = obj.y - this.plankY;
+      const opPlank = Math.abs(dx) < 100 && Math.abs(dy) < 55;
 
-        const idx = this.geplaatst.length;
-        const totaal = Math.max(this.aantalAppels, 2);
-        const hoek = (idx / totaal) * Math.PI * 2 - Math.PI / 2;
-        const r = Math.min(48, this.bodemRadius - 30);
-        const doelX = this.bodem.x + Math.cos(hoek) * r;
-        const doelY = this.bodem.y + Math.sin(hoek) * r * 0.55;
-
-        this.tweens.add({
-          targets: obj,
-          x: doelX,
-          y: doelY,
-          scale: 1.1,
-          duration: 200,
-          ease: 'Back.Out',
-        });
-        this.geplaatst.push(obj);
-        if (typeof Geluid !== 'undefined') Geluid.appel();
-
-        if (this.geplaatst.length === this.aantalAppels) {
-          this.time.delayedCall(300, () => this.toonBakKnop());
-        }
+      if (opPlank && !this.huidigeAppelOpPlank) {
+        this.legOpPlank(obj);
       } else {
         this.tweens.add({
           targets: obj,
           x: obj.startX,
           y: obj.startY,
+          scale: 1.5,
           duration: 250,
           ease: 'Back.Out',
           onComplete: () => {
-            this.tweens.add({
-              targets: obj,
-              y: obj.startY - 6,
-              duration: 900,
-              yoyo: true,
-              repeat: -1,
-              ease: 'Sine.InOut',
-            });
+            if (obj.status === 'heel') {
+              obj.dans = this.tweens.add({
+                targets: obj,
+                y: obj.startY - 6,
+                duration: 900,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.InOut',
+              });
+            }
           },
         });
       }
     });
   }
 
-  tekenKok(x, y) {
-    const muts = this.add.graphics().setDepth(6);
-    const roeltje = this.add.image(x, y, 'roeltje-idle').setOrigin(0.5, 1).setScale(1.4).setDepth(5);
+  legOpPlank(appel) {
+    this.huidigeAppelOpPlank = appel;
+    appel.status = 'opplank';
+    appel.disableInteractive();
+    this.tweens.add({
+      targets: appel,
+      x: this.plankX,
+      y: this.plankY - 6,
+      scale: 1.6,
+      duration: 250,
+      ease: 'Back.Out',
+      onComplete: () => this.toonMes(appel),
+    });
+    this.instructie.setText('Tik op de appel om te snijden!');
+  }
 
+  toonMes(appel) {
+    this.mes.setVisible(true);
+    this.mes.y = this.plankY - 80;
+    this.mes.x = this.plankX;
+    this.mes.setAngle(-15);
+    this.tweens.add({
+      targets: this.mes,
+      y: this.plankY - 68,
+      angle: { from: -15, to: -5 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
+
+    appel.setInteractive({ useHandCursor: true });
+    appel.once('pointerdown', () => this.snijden(appel));
+  }
+
+  snijden(appel) {
+    appel.disableInteractive();
+    this.tweens.killTweensOf(this.mes);
+
+    this.tweens.add({
+      targets: this.mes,
+      y: this.plankY - 10,
+      angle: 30,
+      duration: 150,
+      ease: 'Quad.In',
+      onComplete: () => {
+        this.cameras.main.shake(120, 0.005);
+        if (typeof Geluid !== 'undefined') Geluid.klik();
+        this.tweens.add({
+          targets: this.mes,
+          y: this.plankY - 80,
+          angle: -5,
+          duration: 200,
+        });
+        this.splitsInWedges(appel);
+      },
+    });
+  }
+
+  splitsInWedges(appel) {
+    const aantalWedges = 3;
+    for (let i = 0; i < aantalWedges; i++) {
+      const wedgeIdx = this.wedges.length;
+      const wedge = this.add.image(appel.x, appel.y, 'wedge').setScale(1.3).setDepth(6);
+      const angleDeg = -90 + (i - (aantalWedges - 1) / 2) * 40;
+      wedge.setAngle(angleDeg);
+
+      const hoekRad = Phaser.Math.DegToRad(angleDeg);
+      const burstX = appel.x + Math.cos(hoekRad) * 40;
+      const burstY = appel.y + Math.sin(hoekRad) * 40;
+
+      this.wedges.push(wedge);
+
+      this.tweens.add({
+        targets: wedge,
+        x: burstX,
+        y: burstY,
+        duration: 250,
+        ease: 'Quad.Out',
+        onComplete: () => this.wedgeNaarTaart(wedge, wedgeIdx),
+      });
+    }
+
+    this.tweens.add({
+      targets: appel,
+      alpha: 0,
+      scale: 0,
+      duration: 200,
+      onComplete: () => appel.destroy(),
+    });
+
+    this.mes.setVisible(false);
+
+    this.time.delayedCall(900, () => this.appelKlaar());
+  }
+
+  wedgeNaarTaart(wedge, index) {
+    const ring = Math.floor(index / 6);
+    const posInRing = index % 6;
+    const radius = 42 - ring * 14;
+    const hoek = (posInRing / 6) * Math.PI * 2 + ring * 0.35;
+    const doelX = this.bodemX + Math.cos(hoek) * radius;
+    const doelY = this.bodemY + Math.sin(hoek) * radius * 0.45 - ring * 4;
+
+    const doelAngle = Phaser.Math.RadToDeg(hoek) + 90;
+
+    this.tweens.add({
+      targets: wedge,
+      x: doelX,
+      y: doelY,
+      angle: doelAngle,
+      scale: 1.0,
+      duration: 450,
+      ease: 'Quad.InOut',
+      delay: (index % 3) * 60,
+    });
+  }
+
+  appelKlaar() {
+    this.huidigeAppelOpPlank = null;
+    this.geslepen++;
+    if (typeof Geluid !== 'undefined') Geluid.appel();
+
+    if (this.geslepen === this.aantalAppels) {
+      this.time.delayedCall(400, () => this.toonBakKnop());
+    } else {
+      this.instructie.setText('Sleep de volgende appel!');
+    }
+  }
+
+  tekenKok(x, y) {
+    const roeltje = this.add.image(x, y, 'roeltje-idle').setOrigin(0.5, 1).setScale(1.3).setDepth(5);
+    const muts = this.add.graphics().setDepth(6);
     const mx = x;
     const my = roeltje.y - roeltje.displayHeight + 6;
     muts.fillStyle(0xffffff);
@@ -213,9 +338,9 @@ class BakScene extends Phaser.Scene {
     this.instructie.setVisible(true);
     this.instructie.setText('In de oven...');
 
-    const oven = this.add.image(b / 2, h - 60, 'oven')
+    const oven = this.add.image(this.bodemX, h - 60, 'oven')
       .setOrigin(0.5, 1)
-      .setScale(1)
+      .setScale(0.9)
       .setAlpha(0)
       .setDepth(4);
     this.tweens.add({
@@ -224,7 +349,7 @@ class BakScene extends Phaser.Scene {
       duration: 300,
     });
 
-    const alles = [this.bodem, ...this.geplaatst];
+    const alles = [this.bodem, ...this.wedges];
     this.tweens.add({
       targets: alles,
       y: '+=20',
@@ -232,14 +357,13 @@ class BakScene extends Phaser.Scene {
       duration: 400,
     });
 
-    let totaalStoom = 0;
-    const stoomInterval = this.time.addEvent({
+    this.time.addEvent({
       delay: 150,
       repeat: 14,
       callback: () => {
         const stoom = this.add.image(
-          this.bodem.x + Phaser.Math.Between(-50, 50),
-          this.bodem.y - 10,
+          this.bodemX + Phaser.Math.Between(-50, 50),
+          this.bodemY - 10,
           'stoom'
         ).setScale(Phaser.Math.FloatBetween(0.6, 1.1)).setDepth(15);
         this.tweens.add({
@@ -250,7 +374,6 @@ class BakScene extends Phaser.Scene {
           duration: 1400,
           onComplete: () => stoom.destroy(),
         });
-        totaalStoom++;
       },
     });
 
@@ -271,12 +394,12 @@ class BakScene extends Phaser.Scene {
         duration: 500,
         ease: 'Back.Out',
       });
-      this.geplaatst.forEach((a) => {
+      this.wedges.forEach((w) => {
         this.tweens.add({
-          targets: a,
+          targets: w,
           alpha: 0,
           duration: 300,
-          onComplete: () => a.destroy(),
+          onComplete: () => w.destroy(),
         });
       });
       this.tweens.add({
@@ -297,14 +420,14 @@ class BakScene extends Phaser.Scene {
 
     if (typeof Geluid !== 'undefined') Geluid.thuis();
 
-    const hoera = this.add.text(b / 2, 105, 'Hmm, wat een lekkere taart!', {
+    const hoera = this.add.text(b / 2, 90, 'Hmm, wat een lekkere taart!', {
       fontFamily: 'Trebuchet MS, Arial, sans-serif',
       fontSize: '32px',
       fontStyle: 'bold',
       color: '#ffee66',
       stroke: '#2b1a10',
       strokeThickness: 6,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(20);
 
     this.tweens.add({
       targets: hoera,
@@ -313,10 +436,10 @@ class BakScene extends Phaser.Scene {
       ease: 'Back.Out',
     });
 
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 12; i++) {
       const ster = this.add.image(
-        this.bodem.x + Phaser.Math.Between(-100, 100),
-        this.bodem.y + Phaser.Math.Between(-80, 20),
+        this.bodemX + Phaser.Math.Between(-100, 100),
+        this.bodemY + Phaser.Math.Between(-80, 20),
         'ster',
       ).setDepth(10).setAlpha(0);
       this.tweens.add({
@@ -330,8 +453,8 @@ class BakScene extends Phaser.Scene {
       });
     }
 
-    this.maakKnop(b / 2 - 150, 170, 'Terug naar menu', () => this.scene.start('Menu'));
-    this.maakKnop(b / 2 + 150, 170, 'Nog een keer!', () => this.scene.start('Game', { modus: this.modus }));
+    this.maakKnop(b / 2 - 150, 160, 'Terug naar menu', () => this.scene.start('Menu'));
+    this.maakKnop(b / 2 + 150, 160, 'Nog een keer!', () => this.scene.start('Game', { modus: this.modus }));
   }
 
   maakKnop(x, y, tekst, cb) {
